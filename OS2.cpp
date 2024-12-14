@@ -8,8 +8,6 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <iostream>
-using namespace std;
 
 volatile sig_atomic_t wasSigHup = 0;
 void sigHupHandler(int r)
@@ -37,16 +35,16 @@ serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
 serverAddr.sin_port = htons(1234);
 
 if (bind(serverSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
-cout « "Ошибка" « endl;
+printf("Ошибка\n");
 exit(EXIT_FAILURE);
 }
 
 if (listen(serverSocket, SOMAXCONN) < 0) {
-cout« "Ошибка" « endl;
+printf("Ошибка\n");
 exit(EXIT_FAILURE);
 }
 
-cout«"Сервер запущен"«endl;
+printf("сервер запущен\n");
 
 std::vector<int> clients;
 int maxFd = serverSocket;
@@ -67,10 +65,10 @@ if (pselect(maxFd + 1, &fds, NULL, NULL, NULL, &origMask) == -1)
 {
 if (errno == EINTR)
 {
-cout« "some actions on receiving the signal" « endl;
+printf("some actions on receiving the signal\n");
 if (wasSigHup) {
 wasSigHup = 0;
-cout« "some actions on the descriptor activity" « endl;
+printf("some actions on the descriptor activity\n");
 }
 continue;
 }
@@ -80,7 +78,7 @@ break;
 }
 }
 {
-cout«"Внутренняя работа"«endl;
+printf("Внутренняя работа\n");
 }
 }
 close(serverSocket);
