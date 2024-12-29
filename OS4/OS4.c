@@ -3,11 +3,18 @@
 #include <linux/init.h>
 #include <linux/timekeeping.h>
 #include <linux/rtc.h>
+#include <linux/proc_fs.h>
+#include <linux/uaccess.h>
+#include <linux/version.h>
 
 MODULE_LICENSE("GPL");
-static int __init OS4_init(void) {
+#define PROCFS_NAME "tsulab"
+static struct proc_dir_entry *our_proc_file =NULL;
+static ssize_t procfile_read(struct file *file_pointer, char __user *buffer, size_t buffer_length, loff_t *offset){
   struct timespec64 ts;
   struct rtc_time tm;
+  size_t inf;
+  char in[256];
   int all, passed, year, month, days, hours, minutes, seconds, perc;
   ktime_get_real_ts64(&ts);
   rtc_time64_to_tm(ts.tv_sec, &tm);
@@ -36,14 +43,35 @@ static int __init OS4_init(void) {
   all = days_in_month[tm.tm_mon] *24 *60 *60;
   passed = days*24 *60 *60 + hours *60 *60 + minutes *60 +seconds;
   perc = passed *100 /all;
-  pr_info("Percentage of passed month: %d%%/n", perc);
-  pr_info("Days passed: %d", days);
-  pr_info("Hours passed: %d", hours);
-  pr_info("Minutes passed: %d", minutes);
+  inf = snprintf(in,sizeof(in),
+                  "Percentage of passed month: %d%%/n"
+                  "Time passed: %d days %d hours %d Minutes %d Seconds passed",
+                  perc, days, hours, minutes, seconds);
+  if (*offset >= inf) return 0;
+  if (buffer_length == 0) return -EINVAL;
+  if (buffer_length <inf) return -EINVAL;
+  if (copy_to_user(buffer, in, inf)){
+    return -EFAULT;
+  }
+  *offset+= inf;
+  return inf;
+}
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+static const struct proc_ops proc_file_fops = {
+  .proc_read = procfile_read,
+};
+#else
+static const struct file_operations proc_file_fops = {
+  .proc = procfile_read,
+};
+#endif
+static int __init OS4_init(void) {
+  our_proc_file = proc_create(PROCFS_NAME, 0644, NULL, &proc_file_fops);
   return 0;
 }
 static void __exit OS4_exit(void) {
-pr_info("All information for UTC+7!\n");
+  proc_remove(our_proc_file);
+  pr_info("All information for UTC+7!\n");
 }
 module_init(OS4_init);
 module_exit(OS4_exit);
